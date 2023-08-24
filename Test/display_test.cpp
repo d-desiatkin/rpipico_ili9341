@@ -259,8 +259,8 @@ void setup()
 #else
     printf("SPI master example\n");
 
-    // Enable SPI 0 at 4 MHz and connect to GPIOs
-    spi_init(spi_default, 4 * 1000 * 1000);
+    // Enable SPI 0 at 62.5 MHz and connect to GPIOs
+    spi_init( spi_default , 62.5 * 1000 * 1000);
     gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
     gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
     gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);

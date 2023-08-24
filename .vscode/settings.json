@@ -18,6 +18,7 @@
     },
     "cmake.buildBeforeRun": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.markdownInComments": "enabled",
     "files.associations": {
         "atomic": "cpp",
         "*.tcc": "cpp",
@@ -91,5 +92,7 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": true,
+    "cmake.sourceDirectory": "/home/dmitrii/Code/hw_projects/ILI9341_SKUMSP2402_display/Test"
 }
