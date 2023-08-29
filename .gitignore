@@ -1,3 +1,4 @@
 build/**
-Test/build/**
-Test/lcdwiki_spi/**
+test_gpio/build/**
+test_gpio/lcdwiki_spi/**
+test_pio/build/**

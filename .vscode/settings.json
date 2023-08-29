@@ -94,5 +94,5 @@
         "variant": "cpp"
     },
     "cmake.configureOnOpen": true,
-    "cmake.sourceDirectory": "/home/dmitrii/Code/hw_projects/ILI9341_SKUMSP2402_display/Test"
+    "cmake.sourceDirectory": "/home/dmitrii/Code/hw_projects/ILI9341_SKUMSP2402_display"
 }
