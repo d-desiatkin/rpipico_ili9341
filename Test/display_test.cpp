@@ -8,6 +8,7 @@
 #include <pico/binary_info.h>
 #include "hardware/structs/rosc.h"
 #include <hardware/spi.h>
+#include "ili9341/ili9341.hpp"
 #include <stdio.h>
 #include <cstdlib>
 #include <set>
@@ -41,7 +42,12 @@ public:
     lcd_cmds(spi_inst_t *spi): spi(spi), buf() {}
 
     inline void add_com(uint8_t cmd){
+        // Check wheter met software reset or sleep out
         add(cmd, 0);
+        if ( cmd == ILI9341_SLPOUT || cmd == ILI9341_SWRESET ){
+            execute();
+            sleep_ms(150);
+        }
     }
 
     inline void add_data(uint8_t data){
@@ -64,6 +70,7 @@ public:
         std::vector<uint8_t> sub_buf_to_exec;
         sub_buf_to_exec.reserve(20);
         for(auto it=buf.begin(); it != buf.end(); it++){
+            // General logic bellow
             if(it->second != rs_reg){
                 while(spi_is_busy(spi));
                 spi_write_blocking(spi, sub_buf_to_exec.data(), sub_buf_to_exec.size());
@@ -86,18 +93,21 @@ private:
 void Address_set(lcd_cmds& cmds,
     uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2)
 {
-    cmds.add_com(0x2a);
+    // cmds.add_com(0x2a);
+    cmds.add_com(ILI9341_CASET);
     cmds.add_data(x1>>8);
     cmds.add_data(x1);
     cmds.add_data(x2>>8);
     cmds.add_data(x2);
 
-    cmds.add_com(0x2b);
+    // cmds.add_com(0x2b);
+    cmds.add_com(ILI9341_PASET);
 	cmds.add_data(y1>>8);
 	cmds.add_data(y1);
 	cmds.add_data(y2>>8);
 	cmds.add_data(y2);
-	cmds.add_com(0x2c);
+	// cmds.add_com(0x2c);
+    cmds.add_com(ILI9341_RAMWR);
     cmds.execute();						 
 }
 
@@ -112,69 +122,90 @@ void Lcd_Init(void)
     sleep_ms(15);
 
     lcd_cmds init_cmds(spi_default);
-    init_cmds.add_com(0xCB);
+    init_cmds.add_com(ILI9341_SWRESET);
+    init_cmds.add_com(ILI9341_NOP);
+    init_cmds.add_com(ILI9341_DISPOFF);
+    init_cmds.add_com(ILI9341_NOP);
+
+    // init_cmds.add_com(0xCB); //Power Control A [39 2C 00 34 02]
+    init_cmds.add_com(ILI9341_Power_control_A);
     init_cmds.add_data(0x39);
     init_cmds.add_data(0x2C);
     init_cmds.add_data(0x00);
     init_cmds.add_data(0x34);
     init_cmds.add_data(0x02);
 
-    init_cmds.add_com(0xCF);
+    // init_cmds.add_com(0xCF); //Power Control B [00 81 30]
+    init_cmds.add_com(ILI9341_Power_control_B);
     init_cmds.add_data(0x00);
     init_cmds.add_data(0XC1);
     init_cmds.add_data(0X30);
 
-    init_cmds.add_com(0xE8);
+    // init_cmds.add_com(0xE8); //Driver Timing A [04 11 7A]
+    init_cmds.add_com(ILI9341_Driver_timing_control_A);
     init_cmds.add_data(0x85);
     init_cmds.add_data(0x00);
     init_cmds.add_data(0x78);
 
-    init_cmds.add_com(0xEA);
+    // init_cmds.add_com(0xEA);  // Driver Timing B [66 00]
+    init_cmds.add_com(ILI9341_Driver_timing_control_B);
     init_cmds.add_data(0x00);
     init_cmds.add_data(0x00);
 
-    init_cmds.add_com(0xED);
+    // init_cmds.add_com(0xED);  // ILI POWERONSEQ
+    init_cmds.add_com(ILI9341_Power_on_sequence_control);
     init_cmds.add_data(0x64);
     init_cmds.add_data(0x03);
     init_cmds.add_data(0X12);
     init_cmds.add_data(0X81);
 
-    init_cmds.add_com(0xF7);
+    // init_cmds.add_com(0xF7); // PUMPRATIO
+    init_cmds.add_com(ILI9341_Pump_ratio_control);
     init_cmds.add_data(0x20);
 
-    init_cmds.add_com(0xC0);  //Power control 
+    // init_cmds.add_com(0xC0);  //Power control 
+    init_cmds.add_com(ILI9341_PWCTRL_1);
     init_cmds.add_data(0x23); //VRH[5:0]  
 
-    init_cmds.add_com(0xC1);  //Power control 
+    // init_cmds.add_com(0xC1);  //Power control
+    init_cmds.add_com(ILI9341_PWCTRL_2);
     init_cmds.add_data(0x10); //SAP[2:0];BT[3:0]  
 
-    init_cmds.add_com(0xC5);  //VCM control 
+    // init_cmds.add_com(0xC5);  //VCM control 
+    init_cmds.add_com(ILI9341_VMCTRL1);
     init_cmds.add_data(0x3e); //Contrast
     init_cmds.add_data(0x28);
 
-    init_cmds.add_com(0xC7);  //VCM control2 
+    // init_cmds.add_com(0xC7);  //VCM control2
+    init_cmds.add_com(ILI9341_VMCTRL2);
     init_cmds.add_data(0x86); //--
 
-    init_cmds.add_com(0x36);  // Memory Access Control
-    init_cmds.add_data(0x48);
+    init_cmds.add_com(ILI9341_MADCTL);  // Memory Access Control
+    init_cmds.add_data(0x48); 
 
-    init_cmds.add_com(0x3A);
+    // init_cmds.add_com(0x3A);  //Pixel read=565, write=565.
+    init_cmds.add_com(ILI9341_PIXSET);
     init_cmds.add_data(0x55);
 
-    init_cmds.add_com(0xB1); 
+    // init_cmds.add_com(0xB1);  // Frame Control [00 1B]
+    init_cmds.add_com(ILI9341_FRMCTR1);
     init_cmds.add_data(0x00); 
     init_cmds.add_data(0x18);
 
-    init_cmds.add_com(0xB6);  // Display Function Control 
+    // init_cmds.add_com(0xB6);  // Display Function Control
+    init_cmds.add_com(ILI9341_DISCTRL);
     init_cmds.add_data(0x08);
     init_cmds.add_data(0x82);
     init_cmds.add_data(0x27);
 
-    init_cmds.add_com(0x11);  //Exit Sleep   
-    sleep_ms(120); 
+    init_cmds.add_com(ILI9341_SLPOUT);  //Exit Sleep
+    init_cmds.add_com(ILI9341_NOP);
 
-    init_cmds.add_com(0x29);  //Display on 
-    init_cmds.add_com(0x2c); 		
+    init_cmds.add_com(ILI9341_DISPON);  //Display on
+    init_cmds.add_com(ILI9341_NOP);
+
+    init_cmds.add_com(ILI9341_RAMWR);
+    init_cmds.add_com(ILI9341_NOP);		
 
     init_cmds.execute();
     printf("Finish LED initialization sequence\n");
@@ -184,13 +215,15 @@ void H_line(lcd_cmds& cmds,
     uint16_t x, uint16_t y, uint16_t l, uint16_t c)                   
 {	
   uint16_t i,j;
-  cmds.add_com(0x02c); //write_memory_start
+  cmds.add_com(ILI9341_RAMWR);
+  //cmds.add_com(0x02c); //write_memory_start
   //digitalWrite(RS,HIGH);
   l=l+x;
   Address_set(cmds,x,y,l,y);
   j=l*2;
   for(i=1;i<=j;i++)
   {
+    cmds.add_data(c>>8);
     cmds.add_data(c);
   }
   cmds.execute();
@@ -207,6 +240,7 @@ void V_line(lcd_cmds& cmds,
   j=l*2;
   for(i=1;i<=j;i++)
   { 
+    cmds.add_data(c>>8);
     cmds.add_data(c);
   }
   cmds.execute();
@@ -306,17 +340,32 @@ void printbuf(uint8_t buf[], size_t len) {
     }
 }
 
+void printbuf(uint16_t buf[], size_t len) {
+    int i;
+    for (i = 0; i < len; ++i) {
+        if (i % 8 == 7)
+            printf("%04x\n", buf[i]);
+        else
+            printf("%04x ", buf[i]);
+    }
+
+    // append trailing newline if there isn't one
+    if (i % 8) {
+        putchar('\n');
+    }
+}
+
 bool get_random_bit() {
     return rosc_hw->randombit;
 }
 
-template<typename T>
+template<typename T> 
 T random(T limit){
     T result = 0;
     for (uint8_t i = 0; i < sizeof(T)*8; ++i){
         result += (get_random_bit() << i);
     }
-    return result % limit;
+    return result % (limit + 1);
 }
 
 template<typename T>
@@ -339,28 +388,18 @@ int main() {
     // Initialize all needed connections
     setup();
 
-    // // Prepare buffers for SPI communications
-    // uint8_t out_buf[BUF_LEN], in_buf[BUF_LEN];
-    // // Initialize output buffer
-    // for (size_t i = 0; i < BUF_LEN; ++i) {
-    //     out_buf[i] = i;
-    // }
+    // Prepare buffers for SPI communications
+    uint8_t out_buf[BUF_LEN], in_buf[BUF_LEN];
+    // Initialize output buffer
+    for (size_t i = 0; i < BUF_LEN; ++i) {
+        out_buf[i] = ILI9341_NOP;
+        in_buf[i]  = ILI9341_NOP;
+    }
 
-    // sleep_ms(2 * 1000);
-    // printf("SPI master says: The following buffer will be written to MOSI endlessly:\n");
-    // printbuf(out_buf, BUF_LEN);
-
-    // for (size_t i = 0; ; ++i) {
-    //     // Write the output buffer to MOSI, and at the same time read from MISO.
-    //     spi_write_read_blocking(spi_default, out_buf, in_buf, BUF_LEN);
-
-    //     // Write to stdio whatever came in on the MISO line.
-    //     printf("SPI master says: read page %d from the MISO line:\n", i);
-    //     printbuf(in_buf, BUF_LEN);
-
-    //     // Sleep for ten seconds so you get a chance to read the output.
-    //     sleep_ms(10 * 1000);
-    // }
+    out_buf[0] = ILI9341_RDDIDIF;
+    out_buf[1] = ILI9341_NOP;
+    out_buf[2] = ILI9341_RDDST;
+    out_buf[3] = ILI9341_NOP;
 
     printf("Prepare cmd buffer for drawing\n");
     lcd_cmds draw_cmds(spi_default);

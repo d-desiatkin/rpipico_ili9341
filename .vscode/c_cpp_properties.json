@@ -1,7 +1,9 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Cmake",
+            "compileCommands": "${config:cmake.buildDirectory}/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${PICO_SDK_PATH}/**"
