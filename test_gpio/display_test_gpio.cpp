@@ -8,7 +8,7 @@
 #include <pico/binary_info.h>
 #include "hardware/structs/rosc.h"
 #include <hardware/spi.h>
-#include "ili9341/ili9341.hpp"
+#include "ili9341/ili9341_cmd_regs.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <set>

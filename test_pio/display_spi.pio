@@ -1,0 +1,181 @@
+; Copyright 2023 Desiatkin Dmitrii
+; 
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+; 
+;     http://www.apache.org/licenses/LICENSE-2.0
+; 
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+
+ 
+; I want to try to implement DC/RS signal of display to distinguish between cmds and data.
+; Also I want to try to add multiple CS pins logic (ideally 5 bit for CSn encoding + 1bit for DC/RS )
+; Pin assignments:
+; - SCK is side-set bit 0
+; - MOSI is OUT bit 0 (host-to-device)
+; - MISO is IN bit 0 (device-to-host)
+; - CSn and DC/RS is SET bits
+; 
+.program spi_8_cpha0_mcs
+.side_set 1
+
+.wrap_target
+bitloop:
+    out pins, 1        side 0x0 [1]
+    in pins, 1         side 0x1
+    jmp x-- bitloop    side 0x1
+
+    out pins, 1        side 0x0
+    set x, 6           side 0x0     ; Set bit counter to 6 ( actually we will in / out 8 bits)
+    in pins, 1         side 0x1
+    jmp !osre bitloop  side 0x1     ; Fall-through if TXF empties
+
+    nop                side 0x0 [1] ; CSns back porch
+public entry_point:                 ;
+    set pins, 31       side 0x0     ; Set all CSns to high TODO: think about DC/RS pin default value 
+    pull ifempty       side 0x0     ; Block with CSn high (minimum 2 cycles). Remember to set all CSn to high in csdk before start
+    out exec, 16       side 0x0     ; Here we shift prepared "set" instruction from osr to be executed on next cycle.
+;   set pins XXX       side 0x0     ; That imaginary set instruction controls CSns and DC/RS pins of our display protocol;
+.wrap
+
+
+
+
+.program spi_8_cpha1_mcs
+.side_set 1
+
+.wrap_target
+bitloop:
+    out pins, 1        side 0x1 [1]
+    in pins, 1         side 0x0
+    jmp x-- bitloop    side 0x0
+
+    out pins, 1        side 0x1
+    set x, 6           side 0x1     ; Set bit counter to 6 ( actually we will in / out 8 bits)
+    in pins, 1         side 0x0
+    jmp !osre bitloop  side 0x0
+
+public entry_point:                 ;
+    set pins, 31       side 0x0     ; Set all CSn to high TODO: think about DC/RS pin default value 
+    pull ifempty       side 0x0     ; Block with CSn high (minimum 2 cycles). Remember to set all CSn to high in csdk before start
+    out exec, 16       side 0x0     ; Here we shift prepared "set" instruction from osr to be executed on next cycle.
+;   set pins XXX       side 0x0     ; That imaginary set instruction controls CSns and DC/RS pins of our display protocol;
+    nop                side 0x0 [1] ; CSn front porch
+.wrap
+
+
+.program spi_16_cpha0_mcs
+.side_set 1
+
+.wrap_target
+bitloop:
+    out pins, 1        side 0x0 [1]
+    in pins, 1         side 0x1
+    jmp x-- bitloop    side 0x1
+
+    out pins, 1        side 0x0
+    set x, 14          side 0x0     ; Set bit counter to 14 ( actually we will in / out 16 bits)
+    in pins, 1         side 0x1
+    jmp !osre bitloop  side 0x1     ; Fall-through if TXF empties
+
+    nop                side 0x0 [1] ; CSns back porch
+    
+public entry_point:                 ;
+    set pins, 31       side 0x0     ; Set all CSn to high TODO: think about DC/RS pin default value 
+    pull ifempty       side 0x0     ; Block with CSn high (minimum 2 cycles). Remember to set all CSn to high in csdk before start
+    out exec, 16       side 0x0     ; Here we shift prepared "set" instruction from osr to be executed on next cycle.
+;   set pins XXX       side 0x0     ; That imaginary set instruction controls CSns and DC/RS pins of our display protocol;
+.wrap
+
+
+
+
+.program spi_16_cpha1_mcs
+.side_set 1
+
+.wrap_target
+bitloop:
+    out pins, 1        side 0x1 [1]
+    in pins, 1         side 0x0
+    jmp x-- bitloop    side 0x0
+
+    out pins, 1        side 0x1
+    set x, 14          side 0x1     ; Set bit counter to 14 ( actually we will in / out 16 bits)
+    in pins, 1         side 0x0
+    jmp !osre bitloop  side 0x0
+
+public entry_point:                 ;
+    set pins, 31       side 0x0     ; Set all CSn to high TODO: think about DC/RS pin default value 
+    pull ifempty       side 0x0     ; Block with CSn high (minimum 2 cycles). Remember to set all CSn to high in csdk before start
+    out exec, 16       side 0x0     ; Here we shift prepared "set" instruction from osr to be executed on next cycle.
+;   set pins XXX       side 0x0     ; That imaginary set instruction controls CSns and DC/RS pins of our display protocol;
+    nop                side 0x0 [1] ; CSn front porch
+.wrap
+
+
+% c-sdk {
+#include "hardware/gpio.h"
+static inline void pio_display_spi_init(PIO pio, uint sm, uint prog_offs, bool is_8_bits, float clkdiv, bool cpha, bool cpol, uint pin_sck, uint pin_mosi, uint pin_miso, uint pin_dcrs) {
+    // Initialize State Machine config based on SPI interface cpha value
+    pio_sm_config c;
+    uint entry_point = prog_offs;
+    if ( is_8_bits ) {
+        c = cpha ? spi_8_cpha1_mcs_program_get_default_config(prog_offs) : spi_8_cpha0_mcs_program_get_default_config(prog_offs);
+        sm_config_set_out_shift(&c, false, true,  8 + 16);
+        sm_config_set_in_shift(&c, false, true, 8);
+        entry_point += (cpha ? spi_8_cpha1_mcs_offset_entry_point : spi_8_cpha0_mcs_offset_entry_point);
+    } else {
+        c = cpha ? spi_16_cpha1_mcs_program_get_default_config(prog_offs) : spi_16_cpha0_mcs_program_get_default_config(prog_offs);
+        sm_config_set_out_shift(&c, false, true, 16 + 16);
+        sm_config_set_in_shift(&c, false, true, 16);
+        entry_point += (cpha ? spi_16_cpha1_mcs_offset_entry_point : spi_16_cpha0_mcs_offset_entry_point);
+    };
+    // Set SPI bus rate through clock divider
+    sm_config_set_clkdiv(&c, clkdiv);
+    // Define pin groups
+    sm_config_set_out_pins(&c, pin_mosi, 1);
+    sm_config_set_in_pins(&c, pin_miso);
+    sm_config_set_sideset_pins(&c, pin_sck);
+    sm_config_set_set_pins(&c, pin_dcrs, 5);
+
+    // Here we initialize default values of the pins
+    pio_sm_set_pins_with_mask(pio, sm,
+                    (0u << pin_sck) | (30u << pin_dcrs),
+                    (1u << pin_sck) | (31u << pin_dcrs) | (1u << pin_mosi));
+    // define in and out pins
+    pio_sm_set_pindirs_with_mask(pio, sm, 
+                    (1u << pin_sck) | (1u << pin_mosi) | (31u << pin_dcrs),
+                    (1u << pin_sck) | (1u << pin_mosi) | (31u << pin_dcrs) | (1u << pin_miso));
+    // enable basic SPI pins
+    pio_gpio_init(pio, pin_mosi);
+    pio_gpio_init(pio, pin_miso);
+    pio_gpio_init(pio, pin_sck);
+    // enable DC/RS pin of display that controls what are we sending throug channel cmd or parameter/data
+    pio_gpio_init(pio, pin_dcrs);
+    // enable chip select pins group
+    pio_gpio_init(pio, pin_dcrs + 1);
+    pio_gpio_init(pio, pin_dcrs + 2);
+    pio_gpio_init(pio, pin_dcrs + 3);
+    pio_gpio_init(pio, pin_dcrs + 4);
+
+    // decide whether we should invert behaviour of SCK in accord with SPI cpol value
+    gpio_set_outover(pin_sck, cpol ? GPIO_OVERRIDE_INVERT : GPIO_OVERRIDE_NORMAL);
+
+    // Atomically set the specified bits to 1 in a HW register.
+    // Does we enable input sync bypass here???
+    hw_set_bits(&pio->input_sync_bypass, 1u << pin_miso);
+
+    // Move the instruction counter of state machine to the position 
+    // of first command that we want to be executed
+    pio_sm_init(pio, sm, entry_point, &c);
+    // Set up initial timer for bitloop
+    pio_sm_exec(pio, sm, pio_encode_set(pio_x, is_8_bits ? 8 - 2 : 16 - 2));
+    // Launch state machine 
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

@@ -3,7 +3,9 @@ if (TARGET tinyusb_device)
             display_test_gpio.cpp
     )
 
-    target_link_directories(display_test_gpio PUBLIC ${CMAKE_SOURCE_DIR}/ili9341)
+    include_directories(${CMAKE_SOURCE_DIR})
+
+    target_link_directories(display_test_gpio PUBLIC ${CMAKE_SOURCE_DIR})
     # pull in common dependencies
     target_link_libraries(display_test_gpio pico_stdlib hardware_spi)
 

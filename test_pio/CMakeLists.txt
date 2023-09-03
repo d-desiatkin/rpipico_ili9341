@@ -1,29 +1,26 @@
-add_executable(pio_spi_flash)
+if (TARGET tinyusb_device)
+    add_executable(display_test_pio)
 
-pico_generate_pio_header(pio_spi_flash ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
+    pico_generate_pio_header(display_test_pio ${CMAKE_CURRENT_LIST_DIR}/display_spi.pio)
+    include_directories(${CMAKE_SOURCE_DIR})
+    target_sources(display_test_pio PRIVATE
+            display_test_pio.cpp
+            pio_display_spi.c
+            pio_display_spi.h
+            logic_analyser.c
+            logic_analyser.h
+            )
 
-target_sources(pio_spi_flash PRIVATE
-        spi_flash.c
-        pio_spi.c
-        pio_spi.h
-        )
+    target_link_directories(display_test_pio PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(display_test_pio PRIVATE pico_stdlib hardware_pio hardware_dma)
 
-target_link_libraries(pio_spi_flash PRIVATE pico_stdlib hardware_pio)
-pico_add_extra_outputs(pio_spi_flash)
+    # For debug purposes
+    # enable usb output, disable uart output
+    pico_enable_stdio_usb(display_test_pio 1)
+    pico_enable_stdio_uart(display_test_pio 0)
 
-example_auto_set_url(pio_spi_flash)
+    pico_add_extra_outputs(display_test_pio)
 
-add_executable(pio_spi_loopback)
-
-pico_generate_pio_header(pio_spi_loopback ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
-
-target_sources(pio_spi_loopback PRIVATE
-        spi_loopback.c
-        pio_spi.c
-        pio_spi.h
-        )
-
-target_link_libraries(pio_spi_loopback PRIVATE pico_stdlib hardware_pio)
-pico_add_extra_outputs(pio_spi_loopback)
-
-example_auto_set_url(pio_spi_loopback)
+elseif(PICO_ON_DEVICE)
+    message(WARNING "not building display_test_pio because TinyUSB submodule is not initialized in the SDK")
+endif()

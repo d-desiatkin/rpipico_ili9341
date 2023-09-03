@@ -91,7 +91,16 @@
         "cfenv": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "stdio.h": "c",
+        "pio.h": "c",
+        "stdlib.h": "c",
+        "ws2812.pio.h": "c",
+        "clocks.h": "c",
+        "gpio.h": "c",
+        "time.h": "c",
+        "pio_spi.h": "c",
+        "spi.pio.h": "c"
     },
     "cmake.configureOnOpen": true,
     "cmake.sourceDirectory": "/home/dmitrii/Code/hw_projects/ILI9341_SKUMSP2402_display"

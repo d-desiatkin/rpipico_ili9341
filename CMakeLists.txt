@@ -13,4 +13,4 @@ pico_sdk_init()
 
 # rest of your project
 add_subdirectory(test_gpio)
-# add_subdirectory(test_pio)
+add_subdirectory(test_pio)

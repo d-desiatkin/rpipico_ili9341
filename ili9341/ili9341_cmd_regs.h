@@ -14,7 +14,7 @@
  */
 
 
-/*! \file ili9341.hpp
+/*! \file ili9341_cmd_regs.h
  *  \author Desiatkin Dmitrii
  *  \brief Command register defenitions of ILI9341 LCD driver
  *  \defgroup ili9341 ili9341
@@ -68,6 +68,9 @@
  *            Fix to VDDI or VSS level when not in use.
  * 
 */
+
+#ifndef _ILI9341_CMD_REGS_H
+#define _ILI9341_CMD_REGS_H
  
  
 /******************************
@@ -1081,3 +1084,5 @@
  *  \ingroup ili9341_extended_cmd_set
  */
 #define ILI9341_Pump_ratio_control      0xF7
+
+#endif // _ILI9341_CMD_REGS_H
